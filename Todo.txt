@@ -1,0 +1,9 @@
+Prio:
+Add deletion of watchlists/tickers
+Add saving feature/auto saving
+Enable automatic price updates - done
+Show more data for tickers and structure it nicely
+Add a way to verify that tickers are correct
+Make sure main thread and update thread do not have race conditions
+Later:
+Add alarms
