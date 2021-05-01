@@ -8,7 +8,11 @@ class Watchlist:
         self.name = name
         self.tickers = []
     def addTicker(self, ticker):
-        self.tickers.append(Ticker(ticker))
+        data = yf.download(ticker, period="1d", group_by = 'ticker')
+        if data.empty:
+            print("bad ticker")
+        else:
+            self.tickers.append(Ticker(ticker, round(data['Close'][0], 2)))
         
     def updatePrices(self):
         stonks = self.tickersToString()
@@ -19,6 +23,7 @@ class Watchlist:
 
         elif stonks != "":
             self.tickers[0].getPrice()
+
     def tickersToString(self):
         tickerStr = "" 
         for ticker in self.tickers:

@@ -1,9 +1,9 @@
 import yfinance as yf
 
 class Ticker:
-    def __init__(self, name):
+    def __init__(self, name, price = -1):
         self.name = name.upper()
-        self.price = -1
+        self.price = price
     def getPrice(self):
         data = yf.Ticker(self.name)
         today_data = data.history(period='1d')

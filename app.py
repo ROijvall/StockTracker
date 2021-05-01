@@ -40,20 +40,16 @@ def inputPrompt(prompt):
     return sg.Window(prompt, layout)
 
 def update_watchlists(wListObjs, window, signal):
-    while not signal.is_set():
-        time.sleep(10)
-        print(signal)
-        if signal == None: #wierd workaround
-            break
-        print("sleep timer over")
+    while not signal.wait(10):
         if wListObjs != []:
-            print("tried to update")
+            print("Attempted update")
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 executor.map(thread_func, wListObjs)
+            print("do we get stuck here?")
             window.write_event_value('-UPDATE-', None)
         else:
-            print("no wlists found")
-    print("window successfully closed")
+            print("No Watchlists found")
+
 def thread_func(wlist):
     wlist.updatePrices()
 
@@ -93,11 +89,7 @@ def main():
         event, values = window.read()
         if event == "-UPDATE-" and wListObj != None:
             window["-LIST2-"].Update(values = wListObj.tickers)
-        """
-        if not main and wListObj != None: # better to have a callback from the thread running updates than this...
-            window["-LIST2-"].Update(values = wListObj.tickers)
-            window.refresh()
-        """
+
         if event == "Quit" or event == sg.WIN_CLOSED:
             signal.set()
             break
@@ -140,12 +132,12 @@ def main():
             window[f'-COL2-'].update(visible=False)
             main[0] = True
         if event == "-SAVE1-" or event == "-SAVE2-":
-            print("wtf")
+            print("save will crash for now")
             saveAll(wListObjs)
+
     t.join()
-    print("join done")
     window.close()
-    
+    print("Successfully closed the window and thread")
     exit()
     """
     try:
