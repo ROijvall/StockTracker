@@ -1,5 +1,6 @@
 #import yfinance as yf
 #import tkinter as tk
+from PySimpleGUI.PySimpleGUI import EVENT_SYSTEM_TRAY_ICON_ACTIVATED
 from watchlist import Watchlist
 import time
 import os
@@ -8,22 +9,21 @@ import json
 import threading
 import concurrent.futures
 import time
+import ast
 
-def saveAll(watchlists):
+def saveAll(watchlists, file):
     print("entered saveall")
     result = ""
     for wlist in watchlists:
-        tickers = ""
-        for ticker in wlist.tickers:
-            tickers += json.dumps(ticker.__dict__)
-            print(tickers)
-        result += wlist.name + ":" + json.dumps(wlist.__dict__) + "\n"
-    print(result)
+        result += json.dumps(wlist, default=JSONify) + "\n"
+    with open(file, "w") as f:
+        f.write(result)
+        f.close()
 def toolbar(mainMenu):
-    if(mainMenu):
-        toolbar = [sg.Button("+", key="-ADDWLIST-"), sg.Button("Save", key="-SAVE1-")]
+    if mainMenu:
+        toolbar = [sg.Button("+", key="-ADDWLIST-"), sg.Button("Save", key="-SAVE1-"), sg.Button("🗑", key="-DELETE1-")]
     else:
-        toolbar = [sg.Button("<-"), sg.Button("+", key="-ADDTICKER-"), sg.Button("Save", key="-SAVE2-"), sg.Button("🗘")]
+        toolbar = [sg.Button("<-"), sg.Button("+", key="-ADDTICKER-"), sg.Button("Save", key="-SAVE2-"), sg.Button("🗘"), sg.Button("🗑", key="-DELETE2-")]
     return toolbar
 
 def listbox(content, num):
@@ -45,7 +45,6 @@ def update_watchlists(wListObjs, window, signal):
             print("Attempted update")
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 executor.map(thread_func, wListObjs)
-            print("do we get stuck here?")
             window.write_event_value('-UPDATE-', None)
         else:
             print("No Watchlists found")
@@ -53,23 +52,50 @@ def update_watchlists(wListObjs, window, signal):
 def thread_func(wlist):
     wlist.updatePrices()
 
+def JSONify(Obj):
+    if hasattr(Obj, 'toJSON'):
+        return Obj.toJSON()
+    else:
+        raise TypeError
+
+def loadSaved(file):
+    lines = file.readlines()
+    if lines != "":
+        wlists = []
+        wlistnames = []
+        for line in lines:
+            dict = json.loads(line)
+            wlist = Watchlist(dict['name'])
+            wlistnames.append(dict['name'])
+            tickers = dict['tickers']
+            for ticker in tickers:
+                wlist.addSavedTicker(ticker)
+            wlists.append(wlist)
+        return wlists, wlistnames
+    print("file reading failed")
 def main():
     wListNames = []
     wListObjs = []
     try: 
-        f = open("watchlists.txt")
-        print("found file")
-
-        f.close()
+        with open("saved.txt", 'r+') as f:
+            print("found file")
+            # do some readign of the file here
+            wListObjs, wListNames = loadSaved(f)
+            print(wListNames)
+            f.close()
     except IOError:
+        f = open("saved.txt", 'x')
+        # just create the file then close it
         print("No saved watchlists found")
+    except FileExistsError:
+        print("how'd we get here")
+    
     sg.theme('Dark')
     layout1 = [
         [sg.Text("Watchlists")],
         toolbar(True),
         listbox(wListNames, "1")
     ]
-    
     layout2 = [
         [sg.Text(size=(20,1),key="-WLIST-")],
         toolbar(False),
@@ -78,13 +104,15 @@ def main():
 
     layout = [[sg.Column(layout1, key='-COL1-'), sg.Column(layout2, visible=False, key='-COL2-')]]
 
-    window = sg.Window("Stockwatch", layout)
-    wListObj = None
+    window = sg.Window("StockTracker", layout).finalize()
+    if wListNames != []:
+        window.Element("-LIST1-").Update(values = wListNames)
 
-    main = [True] #workaround so value gets passed to thread
+    wListObj = None
     signal = threading.Event()
     t = threading.Thread(target=update_watchlists, args=(wListObjs, window, signal))
     t.start()
+    
     while True:
         event, values = window.read()
         if event == "-UPDATE-" and wListObj != None:
@@ -94,12 +122,9 @@ def main():
             signal.set()
             break
         if event == "-ADDWLIST-":
-            print("addwlist")
-            if main[0]:
-                event, values = inputPrompt("Add watchlist").read(close=True)
+            event, values = inputPrompt("Add watchlist").read(close=True)
             if event == "Ok":
                 wListObjs.append(Watchlist(values[0]))
-                print(wListObjs[0].name)
                 wListNames.append(values[0])
                 window.Element("-LIST1-").Update(values = wListNames)
 
@@ -114,7 +139,6 @@ def main():
             window["-WLIST-"].Update(wListObj.name)
             window["-LIST2-"].Update(values = [])
             window["-LIST2-"].Update(values = wListObj.tickers)
-            main[0] = False
         if event == "🗘":
             wListObj.updatePrices()
             window["-LIST2-"].Update(values = wListObj.tickers)
@@ -130,10 +154,10 @@ def main():
             wListObj = None
             window[f'-COL1-'].update(visible=True)
             window[f'-COL2-'].update(visible=False)
-            main[0] = True
+        
         if event == "-SAVE1-" or event == "-SAVE2-":
             print("save will crash for now")
-            saveAll(wListObjs)
+            saveAll(wListObjs, "saved.txt")
 
     t.join()
     window.close()

@@ -11,5 +11,8 @@ class Ticker:
     def updatePrice(self, price):
         self.price = price
 
+    def toJSON(self):
+        return self.name
+        
     def __str__(self):
         return self.name + ": " + str(self.price)

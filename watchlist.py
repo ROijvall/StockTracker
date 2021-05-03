@@ -7,6 +7,10 @@ class Watchlist:
     def __init__(self, name):
         self.name = name
         self.tickers = []
+
+    def addSavedTicker(self, ticker):
+        self.tickers.append(Ticker(ticker))
+
     def addTicker(self, ticker):
         data = yf.download(ticker, period="1d", group_by = 'ticker')
         if data.empty:
@@ -33,3 +37,12 @@ class Watchlist:
     def printTickers(self):
         for ticker in self.tickers:
             print(ticker.name)
+
+    def toJSON(self):
+        d = dict()
+        for a, v in self.__dict__.items():
+            if (hasattr(v, "toJSON")):
+                d[a] = v.toJSON()
+            else:
+                d[a] = v
+        return d
