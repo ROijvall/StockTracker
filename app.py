@@ -23,7 +23,7 @@ def toolbar(mainMenu):
     if mainMenu:
         toolbar = [sg.Button("+", key="-ADDWLIST-"), sg.Button("Save", key="-SAVE1-"), sg.Button("🗑", key="-DELETE1-")]
     else:
-        toolbar = [sg.Button("<-"), sg.Button("+", key="-ADDTICKER-"), sg.Button("Save", key="-SAVE2-"), sg.Button("🗘"), sg.Button("🗑", key="-DELETE2-")]
+        toolbar = [sg.Button("<-"), sg.Button("+", key="-ADDTICKER-"), sg.Button("Save", key="-SAVE2-"), sg.Button("🗑", key="-DELETE2-")]
     return toolbar
 
 def listbox(content, num):
@@ -48,6 +48,21 @@ def update_watchlists(wListObjs, window, signal):
             window.write_event_value('-UPDATE-', None)
         else:
             print("No Watchlists found")
+
+def to_table_data(data):            
+    newValues = list()
+    for ticker in data:
+        values = list()
+        values.append(ticker.name)
+        values.append(ticker.price)
+        if(ticker.openPrice != 0):
+            values.append(round(ticker.price - ticker.openPrice,2))
+            values.append(str(round((100 * (ticker.price - ticker.openPrice) / ticker.openPrice),2)) + "%")
+        else:
+            values.append(0)
+            values.append("0%")
+        newValues.append(values)
+    return newValues
 
 def thread_func(wlist):
     wlist.updatePrices()
@@ -87,10 +102,8 @@ def main():
         f = open("saved.txt", 'x')
         # just create the file then close it
         print("No saved watchlists found")
-    except FileExistsError:
-        print("how'd we get here")
     
-    sg.theme('Dark')
+    sg.theme('Dark Blue 3')
     layout1 = [
         [sg.Text("Watchlists")],
         toolbar(True),
@@ -99,7 +112,8 @@ def main():
     layout2 = [
         [sg.Text(size=(20,1),key="-WLIST-")],
         toolbar(False),
-        listbox([], "2")
+        #listbox([], "2")
+        [sg.Table(values = [], headings=["Ticker", "Price", "Change", "%"], num_rows=10, def_col_width=6, auto_size_columns=False, key="-TABLE-", alternating_row_color="#708090")]
     ]
 
     layout = [[sg.Column(layout1, key='-COL1-'), sg.Column(layout2, visible=False, key='-COL2-')]]
@@ -116,7 +130,7 @@ def main():
     while True:
         event, values = window.read()
         if event == "-UPDATE-" and wListObj != None:
-            window["-LIST2-"].Update(values = wListObj.tickers)
+            window["-TABLE-"].Update(values = to_table_data(wListObj.tickers))
 
         if event == "Quit" or event == sg.WIN_CLOSED:
             signal.set()
@@ -137,18 +151,19 @@ def main():
             wListObj = wListObjs[index]
             
             window["-WLIST-"].Update(wListObj.name)
-            window["-LIST2-"].Update(values = [])
-            window["-LIST2-"].Update(values = wListObj.tickers)
-        if event == "🗘":
+            window["-TABLE-"].Update(values = to_table_data(wListObj.tickers))
+            #window["-LIST2-"].Update(values = [])
+            #window["-LIST2-"].Update(values = wListObj.tickers)
+        """if event == "🗘":
             wListObj.updatePrices()
-            window["-LIST2-"].Update(values = wListObj.tickers)
+            window["-LIST2-"].Update(values = wListObj.tickers)"""
 
         if event == "-ADDTICKER-":
             print("addticker")
             event, values = inputPrompt("Add ticker").read(close=True)
             if event == "Ok":
                 wListObj.addTicker(values[0])
-                window["-LIST2-"].Update(values = wListObj.tickers)
+                window["-TABLE-"].Update(values = to_table_data(wListObj.tickers))
                 print(wListObj.tickers)
         if event == "<-":
             wListObj = None

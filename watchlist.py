@@ -24,6 +24,8 @@ class Watchlist:
             data = yf.download(stonks, period="1d", group_by = 'ticker')
             for ticker in self.tickers:
                 ticker.updatePrice(round(data[ticker.name]["Close"].values[0], 2))
+                if ticker.openPrice == 0:
+                    ticker.openPrice = round(data[ticker.name]["Open"].values[0], 2)
 
         elif stonks != "":
             self.tickers[0].getPrice()
