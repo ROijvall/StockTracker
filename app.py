@@ -21,20 +21,20 @@ def saveAll(watchlists, file):
         f.close()
 def toolbar(mainMenu):
     if mainMenu:
-        toolbar = [sg.Button("+", key="-ADDWLIST-"), sg.Button("Save", key="-SAVE1-"), sg.Button("🗑", key="-DELETE1-")]
+        toolbar = [sg.Button("+", key="-ADDWLIST-"), sg.Button("🗑", key="-DELETE1-")]
     else:
-        toolbar = [sg.Button("<-"), sg.Button("+", key="-ADDTICKER-"), sg.Button("Save", key="-SAVE2-"), sg.Button("🗑", key="-DELETE2-")]
+        toolbar = [sg.Button("←"), sg.Button("+", key="-ADDTICKER-"), sg.Button("🗑", key="-DELETE2-")]
     return toolbar
-
-def listbox(content, num):
-        identifier = "-LIST" + num + "-"
-        listbox = [sg.Listbox(values=content, enable_events=True, size=(40, 20), key=identifier)]
-            
-        return listbox
 
 def inputPrompt(prompt):
     layout= [
         [sg.InputText()],
+        [sg.Cancel(), sg.Ok()]
+    ]
+    return sg.Window(prompt, layout)
+
+def doubleCheckPrompt(prompt):
+    layout= [
         [sg.Cancel(), sg.Ok()]
     ]
     return sg.Window(prompt, layout)
@@ -107,30 +107,33 @@ def main():
     layout1 = [
         [sg.Text("Watchlists")],
         toolbar(True),
-        listbox(wListNames, "1")
+        [sg.Listbox(values=wListNames, enable_events=True, size=(40, 20), key="-LIST-", bind_return_key=True)]
     ]
     layout2 = [
         [sg.Text(size=(20,1),key="-WLIST-")],
         toolbar(False),
-        #listbox([], "2")
-        [sg.Table(values = [], headings=["Ticker", "Price", "Change", "%"], num_rows=10, def_col_width=6, auto_size_columns=False, key="-TABLE-", alternating_row_color="#708090")]
+        [sg.Table(values = [], headings=["Ticker", "Price", "Change", "%"], num_rows=15, def_col_width=6, auto_size_columns=False, key="-TABLE-", alternating_row_color="#708090", enable_events=True)]
     ]
 
     layout = [[sg.Column(layout1, key='-COL1-'), sg.Column(layout2, visible=False, key='-COL2-')]]
 
     window = sg.Window("StockTracker", layout).finalize()
     if wListNames != []:
-        window.Element("-LIST1-").Update(values = wListNames)
+        window.Element("-LIST-").Update(values = wListNames)
 
     wListObj = None
     signal = threading.Event()
     t = threading.Thread(target=update_watchlists, args=(wListObjs, window, signal))
     t.start()
-    
+    selectedRow = None
+    selectedWlist = ""
     while True:
         event, values = window.read()
         if event == "-UPDATE-" and wListObj != None:
             window["-TABLE-"].Update(values = to_table_data(wListObj.tickers))
+
+        if event == "-TABLE-":
+            selectedRow = values["-TABLE-"][0]
 
         if event == "Quit" or event == sg.WIN_CLOSED:
             signal.set()
@@ -140,50 +143,60 @@ def main():
             if event == "Ok":
                 wListObjs.append(Watchlist(values[0]))
                 wListNames.append(values[0])
-                window.Element("-LIST1-").Update(values = wListNames)
+                window.Element("-LIST-").Update(values = wListNames)
+                window.write_event_value('-SAVEUPDATE-', None)
 
+        if event == "-LIST-":
+            if values["-LIST-"][0] == selectedWlist: # double click
+                window.write_event_value('-ENTERWLIST-', None)
+            else:
+                selectedWlist = values["-LIST-"][0]
 
-        if event == "-LIST1-" and wListObjs != []: 
+        if event == "-ENTERWLIST-" and selectedWlist != "": 
             window[f'-COL1-'].update(visible=False)
             window[f'-COL2-'].update(visible=True)
             
-            index = wListNames.index(values["-LIST1-"][0])
+            index = wListNames.index(values["-LIST-"][0])
             wListObj = wListObjs[index]
             
             window["-WLIST-"].Update(wListObj.name)
             window["-TABLE-"].Update(values = to_table_data(wListObj.tickers))
-            #window["-LIST2-"].Update(values = [])
-            #window["-LIST2-"].Update(values = wListObj.tickers)
-        """if event == "🗘":
-            wListObj.updatePrices()
-            window["-LIST2-"].Update(values = wListObj.tickers)"""
 
         if event == "-ADDTICKER-":
-            print("addticker")
             event, values = inputPrompt("Add ticker").read(close=True)
             if event == "Ok":
                 wListObj.addTicker(values[0])
                 window["-TABLE-"].Update(values = to_table_data(wListObj.tickers))
-                print(wListObj.tickers)
-        if event == "<-":
+                window.write_event_value('-SAVEUPDATE-', None)
+        
+        if event == "←":
             wListObj = None
             window[f'-COL1-'].update(visible=True)
             window[f'-COL2-'].update(visible=False)
+            selectedRow = None
         
-        if event == "-SAVE1-" or event == "-SAVE2-":
-            print("save will crash for now")
+        if event == "-DELETE1-" and selectedWlist != "":
+            confirm = sg.popup_yes_no("Are you sure you want to delete " + selectedWlist + "?")
+            if confirm == "Yes":
+                print("entered ok")
+                index = wListNames.index(selectedWlist)
+                wListNames.pop(index)
+                wListObjs.pop(index)
+                window.Element("-LIST-").Update(values = wListNames)
+                window.write_event_value('-SAVEUPDATE-', None)
+
+
+        if event == "-DELETE2-" and selectedRow != None:
+            wListObj.deleteTicker(window, selectedRow)
+
+        if event == "-SAVEUPDATE-":
             saveAll(wListObjs, "saved.txt")
 
     t.join()
     window.close()
     print("Successfully closed the window and thread")
     exit()
-    """
-    try:
-        exit()
-    except RuntimeError:
-        print("Closed properly")
-    """
+
 main()
 
 

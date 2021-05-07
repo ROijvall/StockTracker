@@ -1,10 +1,10 @@
 Prio:
-Add deletion of watchlists/tickers
-Add saving feature/auto saving - manual saving as of now
+Add deletion of watchlists/tickers - done
+Add saving feature/auto saving - automatic saving done
 Enable automatic price updates - done
 Show more data for tickers and structure it nicely - done, but cannot color individual cells in the table for now which would be nice
 Add a way to verify that tickers are correct - done
-Make sure main thread and update thread do not have race conditions
+Make sure main thread and update thread do not have race conditions - will do this overtime
 
 Later:
-Add alarms
+Add alarms - next feature

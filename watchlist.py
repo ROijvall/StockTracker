@@ -18,6 +18,11 @@ class Watchlist:
         else:
             self.tickers.append(Ticker(ticker, round(data['Close'][0], 2)))
         
+    def deleteTicker(self, window, tickerIndex):
+        self.tickers.pop(tickerIndex)
+        window.write_event_value('-UPDATE-', None)
+        window.write_event_value('-SAVEUPDATE-', None)
+
     def updatePrices(self):
         stonks = self.tickersToString()
         if stonks.find(" ") != -1:
