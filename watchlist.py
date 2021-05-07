@@ -8,15 +8,15 @@ class Watchlist:
         self.name = name
         self.tickers = []
 
-    def addSavedTicker(self, ticker):
-        self.tickers.append(Ticker(ticker))
+    def addSavedTicker(self, ticker, bought, price):
+        self.tickers.append(Ticker(ticker, bought=bought, boughtPrice=price))
 
-    def addTicker(self, ticker):
+    def addTicker(self, ticker, bought=0, price=0):
         data = yf.download(ticker, period="1d", group_by = 'ticker')
         if data.empty:
             print("bad ticker")
         else:
-            self.tickers.append(Ticker(ticker, round(data['Close'][0], 2)))
+            self.tickers.append(Ticker(ticker, price=round(data['Close'][0], 2), bought=bought, boughtPrice=price))
         
     def deleteTicker(self, window, tickerIndex):
         self.tickers.pop(tickerIndex)

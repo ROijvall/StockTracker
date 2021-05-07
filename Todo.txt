@@ -6,5 +6,6 @@ Show more data for tickers and structure it nicely - done, but cannot color indi
 Add a way to verify that tickers are correct - done
 Make sure main thread and update thread do not have race conditions - will do this overtime
 
-Later:
-Add alarms - next feature
+Add alarms - next feature 
+Inköpspris + antal stonks - added
+Renaming watchlists

@@ -23,7 +23,7 @@ def toolbar(mainMenu):
     if mainMenu:
         toolbar = [sg.Button("+", key="-ADDWLIST-"), sg.Button("🗑", key="-DELETE1-")]
     else:
-        toolbar = [sg.Button("←"), sg.Button("+", key="-ADDTICKER-"), sg.Button("🗑", key="-DELETE2-")]
+        toolbar = [sg.Button("←"), sg.Button("+", key="-ADDTICKER-"), sg.Button("🗑", key="-DELETE2-"), sg.Button("⏰")]
     return toolbar
 
 def inputPrompt(prompt):
@@ -31,7 +31,18 @@ def inputPrompt(prompt):
         [sg.InputText()],
         [sg.Cancel(), sg.Ok()]
     ]
-    return sg.Window(prompt, layout)
+    return sg.Window(prompt, layout, resizable=True)
+
+def tickerPrompt(prompt):
+    layout= [
+        [sg.InputText()],
+        [sg.Text("OPTIONAL - input amount of owned shares")],
+        [sg.InputText()],
+        [sg.Text("OPTIONAL - input total purchase price of owned shares")],
+        [sg.InputText()],
+        [sg.Cancel(), sg.Ok()]
+    ]
+    return sg.Window(prompt, layout, resizable=True)
 
 def doubleCheckPrompt(prompt):
     layout= [
@@ -61,6 +72,14 @@ def to_table_data(data):
         else:
             values.append(0)
             values.append("0%")
+        if(ticker.bought != 0):
+            totValue = ticker.price * ticker.bought
+            values.append(str(round(totValue,2)))
+            values.append(str(round((totValue-ticker.boughtPrice),2)))
+            values.append(str(round((100 * (totValue - ticker.boughtPrice) / ticker.boughtPrice),2)) + "%")
+        else:
+            for _ in range(3):
+                values.append("N/A")
         newValues.append(values)
     return newValues
 
@@ -79,15 +98,15 @@ def loadSaved(file):
         wlists = []
         wlistnames = []
         for line in lines:
-            dict = json.loads(line)
-            wlist = Watchlist(dict['name'])
-            wlistnames.append(dict['name'])
-            tickers = dict['tickers']
-            for ticker in tickers:
-                wlist.addSavedTicker(ticker)
+            dict1 = json.loads(line)
+            wlist = Watchlist(dict1['name'])
+            for ticker in dict1['tickers']:
+                wlist.addSavedTicker(ticker['name'], ticker['bought'], ticker['boughtPrice'])      
             wlists.append(wlist)
+            wlistnames.append(dict1['name'])
         return wlists, wlistnames
     print("file reading failed")
+
 def main():
     wListNames = []
     wListObjs = []
@@ -112,7 +131,7 @@ def main():
     layout2 = [
         [sg.Text(size=(20,1),key="-WLIST-")],
         toolbar(False),
-        [sg.Table(values = [], headings=["Ticker", "Price", "Change", "%"], num_rows=15, def_col_width=6, auto_size_columns=False, key="-TABLE-", alternating_row_color="#708090", enable_events=True)]
+        [sg.Table(values = [], headings=["Ticker", "Price", "Change", "%", "Value", "P/L", "P/L %"], num_rows=15, def_col_width=7, auto_size_columns=False, key="-TABLE-", alternating_row_color="#708090", enable_events=True)]
     ]
 
     layout = [[sg.Column(layout1, key='-COL1-'), sg.Column(layout2, visible=False, key='-COL2-')]]
@@ -163,12 +182,19 @@ def main():
             window["-TABLE-"].Update(values = to_table_data(wListObj.tickers))
 
         if event == "-ADDTICKER-":
-            event, values = inputPrompt("Add ticker").read(close=True)
+            event, values = tickerPrompt("Add ticker").read(close=True)
             if event == "Ok":
-                wListObj.addTicker(values[0])
+                if values[1] != "" and values[2] != "":
+                    wListObj.addTicker(values[0], float(values[1]), float(values[2]))
+                else:
+                    wListObj.addTicker(values[0])
                 window["-TABLE-"].Update(values = to_table_data(wListObj.tickers))
                 window.write_event_value('-SAVEUPDATE-', None)
         
+        if event == "⏰" and selectedRow != None:
+            index = wListObj.tickers
+            print("alarms not implemented yet!")
+
         if event == "←":
             wListObj = None
             window[f'-COL1-'].update(visible=True)
