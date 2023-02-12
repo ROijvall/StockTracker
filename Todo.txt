@@ -1,4 +1,5 @@
 Add alarms - next feature 
-Different color text according to P/L?
+Different color text according to P/L? - early implementation done
 Renaming watchlists
-Update app to use fast_info and sessions/caching if it reduces load
+Investigate if new features fast_info and sessions/caching reduces load when fetching data for multiple tickers
+Improve closing the app - seemingly stalls for the update thread

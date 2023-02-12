@@ -60,8 +60,14 @@ def update_watchlists(wListObjs, window, signal):
         else:
             print("No Watchlists found")
 
+def update_tickers(window, wListObj):
+    result = to_table_data(wListObj.tickers)
+    window["-TABLE-"].Update(values = result[0], row_colors = result[1])
+
 def to_table_data(data):            
     newValues = list()
+    colors = list()
+    i = 0
     for ticker in data:
         values = list()
         values.append(ticker.name)
@@ -69,9 +75,17 @@ def to_table_data(data):
         if(ticker.openPrice != 0):
             values.append(round(ticker.price - ticker.openPrice,2))
             values.append(str(round((100 * (ticker.price - ticker.openPrice) / ticker.openPrice),2)) + "%")
+            # color logic (postive price movement green, negative red and neutral gray)
+            if (ticker.price - ticker.openPrice > 0):
+                colors.append(tuple([i, "#008000"]))
+            elif (ticker.price - ticker.openPrice < 0):
+                colors.append(tuple([i, "#FF0000"]))
+            else:
+                colors.append(tuple([i,"#808080"]))
         else:
             values.append(0)
             values.append("0%")
+            colors.append(tuple([i,"#808080"]))
         if(ticker.bought != 0):
             totValue = ticker.price * ticker.bought
             values.append(str(round(totValue,2)))
@@ -81,7 +95,9 @@ def to_table_data(data):
             for _ in range(3):
                 values.append("N/A")
         newValues.append(values)
-    return newValues
+        i += 1
+    print(newValues)
+    return tuple([newValues, colors])
 
 def thread_func(wlist):
     wlist.updatePrices()
@@ -131,7 +147,7 @@ def main():
     layout2 = [
         [sg.Text(size=(20,1),key="-WLIST-")],
         toolbar(False),
-        [sg.Table(values = [], headings=["Ticker", "Price", "Change", "%", "Value", "P/L", "P/L %"], num_rows=15, def_col_width=7, auto_size_columns=False, key="-TABLE-", alternating_row_color="#708090", enable_events=True)]
+        [sg.Table(values = [], headings=["Ticker", "Price", "Change", "%", "Value", "P/L", "P/L %"], num_rows=15, def_col_width=7, auto_size_columns=False, key="-TABLE-", enable_events=True)]
     ]
 
     layout = [[sg.Column(layout1, key='-COL1-'), sg.Column(layout2, visible=False, key='-COL2-')]]
@@ -149,8 +165,7 @@ def main():
     while True:
         event, values = window.read()
         if event == "-UPDATE-" and wListObj != None:
-            window["-TABLE-"].Update(values = to_table_data(wListObj.tickers))
-
+            update_tickers(window, wListObj)
         if event == "-TABLE-":
             selectedRow = values["-TABLE-"][0]
 
@@ -179,7 +194,7 @@ def main():
             wListObj = wListObjs[index]
             
             window["-WLIST-"].Update(wListObj.name)
-            window["-TABLE-"].Update(values = to_table_data(wListObj.tickers))
+            update_tickers(window, wListObj)
 
         if event == "-ADDTICKER-":
             event, values = tickerPrompt("Add ticker").read(close=True)
@@ -188,7 +203,7 @@ def main():
                     wListObj.addTicker(values[0], float(values[1]), float(values[2]))
                 else:
                     wListObj.addTicker(values[0])
-                window["-TABLE-"].Update(values = to_table_data(wListObj.tickers))
+                update_tickers(window, wListObj)
                 window.write_event_value('-SAVEUPDATE-', None)
         
         if event == "⏰" and selectedRow != None:
