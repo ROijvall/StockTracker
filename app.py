@@ -113,7 +113,7 @@ def main():
     try: 
         with open("saved.txt", 'r+') as f:
             print("found file")
-            # do some readign of the file here
+            # load the file if it exists
             wListObjs, wListNames = loadSaved(f)
             print(wListNames)
             f.close()

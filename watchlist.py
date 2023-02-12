@@ -13,6 +13,7 @@ class Watchlist:
 
     def addTicker(self, ticker, bought=0, price=0):
         data = yf.download(ticker, period="1d", group_by = 'ticker')
+        print(data)
         if data.empty:
             print("bad ticker")
         else:
@@ -25,6 +26,7 @@ class Watchlist:
 
     def updatePrices(self):
         stonks = self.tickersToString()
+        print(stonks)
         if stonks.find(" ") != -1:
             data = yf.download(stonks, period="1d", group_by = 'ticker')
             for ticker in self.tickers:

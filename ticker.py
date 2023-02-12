@@ -20,9 +20,6 @@ class Ticker:
         self.price = price
 
     def toJSON(self):
-        #if self.bought and self.boughtPrice:
-            #print(self.__dict__)
-        #return self.name
         return self.__dict__  
         
     def __str__(self):
