@@ -1,5 +1,13 @@
-Add alarms - next feature 
-Different color text according to P/L? - early implementation done
+## Recent
+Add alarms - added 
+Different color text according to P/L? - added, but could look nicer
+Use fast_info - added
+
+## still todo
 Renaming watchlists
-Investigate if new features fast_info and sessions/caching reduces load when fetching data for multiple tickers
-Improve closing the app - seemingly stalls for the update thread
+Investigate how sessions/caching reduces load when fetching data for multiple tickers
+Improve closing the app - use thread.signal?
+Implement some Mutex locks to avoid race conditions between user interaction and update thread
+Fix alarm sound stalling the application for the duration
+test expiry
+sanitize input/better input handling

@@ -9,44 +9,51 @@ class Alarm:
         self.expiry = expiry
         self.active = active
 
-    def checkIfTriggered(self, curr_price, open_price, present_time):
-        if curr_price > self.over:
-            self.deactivateAlarm()
+    def check_if_triggered(self, curr_price, open_price, present_time):
+        if self.over != 0 and curr_price > self.over:
+            self.deactivate()
+            print("price is over, deactivate")
             return True
-        if curr_price < self.under:
-            self.deactivateAlarm()
+        if self.under != 0 and curr_price < self.under:
+            self.deactivate()
+            print("price is under, deactivate")
             return True
-        if self.isExpired(present_time):
-            self.deactivateAlarm()
+        if self.is_expired(present_time):
+            print("alarm expired, deactivate")
+            self.deactivate()
             return True
-        if curr_price <= 0.95 * open_price or curr_price >= 1.05 * open_price: 
-            self.deactivateAlarm()
+        if self.intraday_percent != 0 and (curr_price <= self.intraday_percent * open_price or curr_price >= self.intraday_percent * open_price): 
+            print("intraday_percent condition, deactivate")
+            self.deactivate()
             return True
         return False
 
-    def setOver(self, value):
+    def set_over(self, value):
         self.over = value
     
-    def setUnder(self, value):
+    def set_under(self, value):
         self.under = value
 
-    def setIntraday(self, value):
+    def set_intraday(self, value):
         self.intraday_percent = value
     
-    def setExpiry(self, value):
+    def set_expiry(self, value):
         now = datetime.datetime.now()
         time_change = datetime.timedelta(hours=value)
         self.expiry = now + time_change
         
-    def activateAlarm(self):
+    def activate(self):
         self.active = True
 
-    def deactivateAlarm(self):
+    def deactivate(self):
         self.active = False
 
-    def isExpired(self, present_time):
-        if present_time > self.expiry:
-            self.deactivateAlarm()
+    def is_active(self):
+        return self.active
+
+    def is_expired(self, present_time):
+        if self.expiry != None and present_time > self.expiry:
+            self.deactivate()
             return True
         return False
 
