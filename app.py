@@ -457,7 +457,11 @@ def main():
             if confirm == "Yes":
                 index = wlist_names.index(selected_wlist)
                 wlist_names.pop(index)
-                wlists.pop(index)
+                wlist_tmp = wlists.pop(index)
+                for ticker_name in wlist_tmp.get_tickers():
+                    tickers[ticker_name].decrease_ref_count()
+                    if tickers[ticker_name].get_ref_count() == 0:
+                         tickers.pop(ticker_name)
                 window.Element("-WLIST-").Update(values=wlist_names)
                 selected_wlist = ""
                 window.write_event_value('-SAVEUPDATE-', None)
@@ -466,7 +470,6 @@ def main():
             ticker_name = wlist.delete_ticker(selected_row)
             tickers[ticker_name].decrease_ref_count()
             if tickers[ticker_name].get_ref_count() == 0:
-                print("popped: " + ticker_name)
                 tickers.pop(ticker_name)
             window.write_event_value('-UPDATE-', None)
             window.write_event_value('-SAVEUPDATE-', None)

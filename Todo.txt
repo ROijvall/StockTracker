@@ -4,7 +4,8 @@ Different color text according to P/L? - added, but could look nicer
 Use fast_info - added
 
 ## still todo
-Renaming watchlists
+currently expiry parameter does not work
+renaming watchlists
 Investigate how sessions/caching reduces load when fetching data for multiple tickers
 Improve closing the app - use thread.signal?
 Implement some Mutex locks to avoid race conditions between user interaction and update thread
