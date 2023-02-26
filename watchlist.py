@@ -19,6 +19,9 @@ class Watchlist:
     def delete_ticker(self, tickerIndex):
         ticker = self.ticker_names.pop(tickerIndex)
         return ticker
+    
+    def get_name(self):
+        return self.name
 
     def toJSON(self):
         d = dict()

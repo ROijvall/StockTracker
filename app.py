@@ -42,7 +42,7 @@ def toolbar(menu):
         toolbar = [sg.Button("🗑", key="-DELETETRIGGERED-"), sg.Button("↻", key="-ACTIVATETRIGGERED-")]
     return toolbar
 
-def input_prompt(prompt):
+def watchlist_prompt(prompt):
     layout = [
         [sg.InputText()],
         [sg.Cancel(), sg.Ok()]
@@ -94,7 +94,7 @@ def layout(wlist_names):
             40, 20), key="-WLIST-", bind_return_key=True)]
     ]
     layout2 = [
-        [sg.Text("Watchlist:"), sg.Text(size=(20, 1), key="-WLIST-")],
+        [sg.Text("Watchlist:"), sg.Text(size=(20, 1), key="-WLISTREF-")],
         toolbar(1),
         [sg.Table(values=[], headings=["Ticker", "Price", "Change", "%", "Value", "P/L", "P/L %"], num_rows=15, def_col_width=7, auto_size_columns=False, key="-TICKERTABLE-", enable_events=True)]
     ]
@@ -295,6 +295,7 @@ def main():
     tickers = {}
     triggered_alarms = []
     triggered_alarms_showing = False
+    popup_active = False
     current_view = WATCHLIST_VIEW
     try:
         with open("saved.txt", 'r+') as f:
@@ -351,21 +352,28 @@ def main():
             selected_talarm = values["-TALARMTABLE-"][0]
 
         if event == "-ADDWLIST-":
-            event, values = input_prompt("Add watchlist").read(close=True)
+            popup_active = True
+            event, values = watchlist_prompt("Add watchlist").read(close=True)
             if event == "Ok":
                 wlists.append(Watchlist(values[0]))
                 wlist_names.append(values[0])
                 window.Element("-WLIST-").Update(values=wlist_names)
                 window.write_event_value('-SAVEUPDATE-', None)
+                popup_active = False
+            elif event == "Cancel":
+                popup_active = False
 
         if event == "-ADDTICKER-":
+            popup_active = True
+            bad_ticker = False 
             event, values = ticker_prompt("Add ticker").read(close=True)
             if event == "Ok":
                 name = values[0].upper()
+                ticker = None
                 if name in tickers:
                     print("ticker already exists, upping refcount")
                     wlist.add_ticker(name)
-                    tickers[name].increase_ref_count()
+                    ticker = tickers[name]
                 else:
                     ticker = None
                     if values[1] != "" and values[2] != "":
@@ -375,14 +383,19 @@ def main():
                         ticker = Ticker(name)
                     if ticker.is_bad():
                         print("Bad ticker")
-                    else:
-                        tickers[name] = ticker
-                        wlist.add_ticker(name)
-                        tickers[name].increase_ref_count()
-                        update_tickers(window, wlist.get_tickers(), tickers, "-TICKERTABLE-")
-                        window.write_event_value('-SAVEUPDATE-', None)
+                        bad_ticker = True
+                if not bad_ticker:
+                    tickers[name] = ticker
+                    ticker.increase_ref_count()
+                    wlist.add_ticker(name)
+                    update_tickers(window, wlist.get_tickers(), tickers, "-TICKERTABLE-")
+                    window.write_event_value('-SAVEUPDATE-', None)
+            elif event == "Cancel":
+                popup_active = False
+
 
         if event == "-ADDALARM-":
+            popup_active = True
             event, values = alarm_prompt(
                 "Add alarm for: " + selected_ticker).read(close=True)
             newAlarm = Alarm(selected_ticker)
@@ -402,6 +415,8 @@ def main():
                     print("invalid input ")
                 update_alarms(window, tickers[selected_ticker], datetime.datetime.now())
                 window.write_event_value('-SAVEUPDATE-', None)
+            elif event == "Cancel":
+                popup_active = False
 
         if event == "-ENTERWLIST-" and selected_wlist != "":
             current_view = TICKER_VIEW
@@ -410,7 +425,7 @@ def main():
             wlist = wlists[index]
             selected_wlist = ""
 
-            window["-WLIST-"].Update(wlist.name)
+            window["-WLISTREF-"].Update(wlist)
             update_tickers(window, wlist.get_tickers(), tickers, "-TICKERTABLE-")
 
         if event == "-ENTERALARM-" and selected_row != None:
@@ -444,13 +459,15 @@ def main():
                 wlist_names.pop(index)
                 wlists.pop(index)
                 window.Element("-WLIST-").Update(values=wlist_names)
+                selected_wlist = ""
                 window.write_event_value('-SAVEUPDATE-', None)
 
         if event == "-DELETETICKER-" and selected_row != None:
-            ticker = wlist.delete_ticker(selected_row)
-            tickers[ticker].decrease_ref_count()
-            if tickers[ticker].get_ref_count == 0:
-                tickers.pop(ticker.get_name())
+            ticker_name = wlist.delete_ticker(selected_row)
+            tickers[ticker_name].decrease_ref_count()
+            if tickers[ticker_name].get_ref_count() == 0:
+                print("popped: " + ticker_name)
+                tickers.pop(ticker_name)
             window.write_event_value('-UPDATE-', None)
             window.write_event_value('-SAVEUPDATE-', None)
 
@@ -492,10 +509,11 @@ def main():
         if event == "-SAVEUPDATE-":
             save_all(tickers, wlists, "saved.txt")
 
-        if event == "Quit" or event == sg.WIN_CLOSED:
+        if (event == "Quit" or event == sg.WIN_CLOSED) and not popup_active:
             signal.set()
             break
-
+        elif popup_active and (event == "Quit" or event == sg.WIN_CLOSED):
+             popup_active = False
     t.join()
     window.close()
     print("Successfully closed the window and thread")

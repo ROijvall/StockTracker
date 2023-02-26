@@ -9,7 +9,7 @@ class Ticker:
         self.bought_amount = bought
         self.bought_price = bought_price
         self.bad_ticker = False
-        self.ref_count = 1
+        self.ref_count = 0
         self.alarms_active = []
         self.alarms_inactive = []
         self.yf_ticker = yf.Ticker(self.name)
