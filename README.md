@@ -10,11 +10,11 @@ While there are many great applications for tracking your portfolio out there, S
 
 The obvious downside is of course that data is only fetched every 10 seconds per default, but that can be adjusted. Adjust at your own discretion.
 
-For performance comparison see Chrome resource usage:
+For performance comparison see Chrome resource usage while running a popular watchlist web application:
 
 ![image](https://user-images.githubusercontent.com/34237768/221692186-02c6a398-995b-48af-ae02-6342717aec70.png)
 
-StockTrackerLite resource usage (CPU load does increase when thread is updating every 10s)
+StockTrackerLite resource usage (CPU load increases when thread update thread is running)
 
 ![image](https://user-images.githubusercontent.com/34237768/221692450-b9bd7faf-f29e-4c2c-9b44-c5334190a98d.png)
 
