@@ -14,7 +14,7 @@ For performance comparison see Chrome resource usage while running a popular wat
 
 ![image](https://user-images.githubusercontent.com/34237768/221692186-02c6a398-995b-48af-ae02-6342717aec70.png)
 
-StockTrackerLite resource usage (CPU load increases when thread update thread is running)
+StockTrackerLite resource usage (CPU load increases when update thread is running)
 
 ![image](https://user-images.githubusercontent.com/34237768/221692450-b9bd7faf-f29e-4c2c-9b44-c5334190a98d.png)
 
