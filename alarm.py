@@ -22,10 +22,13 @@ class Alarm:
             print("alarm expired, deactivate")
             self.deactivate()
             return True
-        if self.intraday_percent != 0 and (curr_price <= self.intraday_percent * open_price or curr_price >= self.intraday_percent * open_price): 
-            print("intraday_percent condition, deactivate")
-            self.deactivate()
-            return True
+        if self.intraday_percent != 0: 
+            fraction = self.intraday_percent / 100
+            delta = abs(1-(curr_price/open_price))
+            if delta > fraction:
+                print("intraday_percent condition, deactivate")
+                self.deactivate()
+                return True
         return False
 
     def set_over(self, value):
