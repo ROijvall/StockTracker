@@ -7,7 +7,7 @@ import json
 import threading
 import concurrent.futures
 import time
-import datetime
+from datetime import datetime
 from playsound import playsound
 
 WATCHLIST_VIEW = 0
@@ -15,7 +15,7 @@ TICKER_VIEW = 1
 ALARM_VIEW = 2
 
 def save_all(tickers, watchlists, file):
-    print("entered save_all")
+    print("save_all")
     result = ""
     for key in tickers:
         ticker = tickers[key]
@@ -178,13 +178,11 @@ def alarms_to_table(ticker, time):
 			values.append(alarm.intraday_percent)
 		else:
 			values.append("N/A")
-		if alarm.expiry != None and alarm.active:
-			delta = alarm.expiry - time
+		if alarm.get_expiry() != None and alarm.is_active():
+			delta = alarm.get_expiry() - time
 			seconds = delta.total_seconds()
 			minutes = seconds / 60
 			hours = minutes / 60
-			print("h: " + str(hours) + " m: " +
-					str(minutes) + " s: " + str(seconds))
 			if hours > 1:
 				values.append(str(int(hours))+"h")
 			elif minutes > 1:
@@ -244,7 +242,7 @@ def tickers_to_table(tickers, data):
 
 def thread_func(ticker_tuple):
     ticker = ticker_tuple[1] # first element is key (ticker name)
-    if ticker.update(datetime.datetime.now()):
+    if ticker.update(datetime.now()):
         return ticker.get_name()
     else:
         return None
@@ -257,6 +255,7 @@ def JSONify(Obj):
 
 
 def load_saved(file):
+    print("loading saved data")
     lines = file.readlines()
     if lines != "":
         wlists = []
@@ -272,6 +271,8 @@ def load_saved(file):
                 ticker = list(ticker_dict)[0] # only 1 ticker per line
                 tickers[ticker] = Ticker(ticker)
                 for a in ticker_dict[ticker]['alarms_active']:
+                    if a['expiry']:
+                        a['expiry'] = datetime.fromisoformat(a['expiry'])
                     alarm = Alarm(name=a['name'], over=a['over'], under=a['under'], intraday_percent=a['intraday_percent'], expiry=a['expiry'], active=a['active'])
                     tickers[ticker].add_alarm(alarm)
                 for a in ticker_dict[ticker]['alarms_inactive']:
@@ -328,7 +329,7 @@ def main():
         if event == "-UPDATE-" and wlist != None:
             update_tickers(window, wlist.get_tickers(), tickers, "-TICKERTABLE-")
             if selected_ticker != None and selected_ticker in tickers:
-                update_alarms(window, tickers[selected_ticker], datetime.datetime.now())
+                update_alarms(window, tickers[selected_ticker], datetime.now())
             if len(triggered_alarms) > 0:
                 if not triggered_alarms_showing:
                     window[f'-TALARMS-'].update(visible=True)
@@ -413,7 +414,7 @@ def main():
                     tickers[selected_ticker].add_alarm(newAlarm)
                 else:
                     print("invalid input ")
-                update_alarms(window, tickers[selected_ticker], datetime.datetime.now())
+                update_alarms(window, tickers[selected_ticker], datetime.now())
                 window.write_event_value('-SAVEUPDATE-', None)
             elif event == "Cancel":
                 popup_active = False
@@ -435,7 +436,7 @@ def main():
             window["-ALARM-"].Update(selected_ticker)
             if selected_ticker not in tickers:
                 tickers[selected_ticker] = Ticker(selected_ticker)
-            update_alarms(window, tickers[selected_ticker], datetime.datetime.now())
+            update_alarms(window, tickers[selected_ticker], datetime.now())
             selected_row = None
 
         if event == "-LEAVETICKERS-":
@@ -480,7 +481,7 @@ def main():
             triggered_alarms.pop(selected_talarm)
             update_tickers(window, triggered_alarms, tickers, "-TALARMTABLE-")
             if current_view == ALARM_VIEW:
-                update_alarms(window, tickers[selected_ticker], datetime.datetime.now())
+                update_alarms(window, tickers[selected_ticker], datetime.now())
             if len(triggered_alarms) == 0:
                 window[f'-TALARMS-'].update(visible=False)
                 triggered_alarms_showing = False
@@ -489,12 +490,12 @@ def main():
 
         if event == "-DELETEALARM-" and selected_row != None:
             tickers[selected_ticker].remove_alarm(selected_row)
-            update_alarms(window, tickers[selected_ticker], datetime.datetime.now())
+            update_alarms(window, tickers[selected_ticker], datetime.now())
             selected_row = None
 
         if event == "-ACTIVATEALARM-" and selected_row != None:
             tickers[selected_ticker].activate_alarm(selected_row)
-            update_alarms(window, tickers[selected_ticker], datetime.datetime.now())
+            update_alarms(window, tickers[selected_ticker], datetime.now())
 
         if event == "-ACTIVATETRIGGERED-" and selected_talarm != None:
             ticker_name = triggered_alarms[selected_talarm]
@@ -502,7 +503,7 @@ def main():
             triggered_alarms.pop(selected_talarm)
             update_tickers(window, triggered_alarms, tickers, "-TALARMTABLE-")
             if current_view == ALARM_VIEW:
-                update_alarms(window, tickers[selected_ticker], datetime.datetime.now())
+                update_alarms(window, tickers[selected_ticker], datetime.now())
             if len(triggered_alarms) == 0:
                     window[f'-TALARMS-'].update(visible=False)
                     triggered_alarms_showing = False

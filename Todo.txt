@@ -1,10 +1,5 @@
-## Recent
-Add alarms - added 
-Different color text according to P/L? - added, but could look nicer
-Use fast_info - added
-
-## still todo
-currently expiry parameter does not work
+## todo
+currently you can edit triggered alarms in normal view while triggered alarm view is visible, figure out a better behavior
 renaming watchlists
 Investigate how sessions/caching reduces load when fetching data for multiple tickers
 Improve closing the app - use thread.signal?
