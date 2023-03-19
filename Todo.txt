@@ -1,9 +1,6 @@
 ## todo
-currently you can edit triggered alarms in normal view while triggered alarm view is visible, figure out a better behavior
-renaming watchlists
+renaming watchlists - not sure how to communicate this to the user with a symbol like the other options..
 Investigate how sessions/caching reduces load when fetching data for multiple tickers
-Improve closing the app - use thread.signal?
 Implement some Mutex locks to avoid race conditions between user interaction and update thread
-Fix alarm sound stalling the application for the duration
-test expiry
 sanitize input/better input handling
+create interface for settings + saving settings - if enough settings are found, currently only sound on/off is available and is not persistently stored

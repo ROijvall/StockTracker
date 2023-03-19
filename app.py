@@ -7,12 +7,14 @@ import json
 import threading
 import concurrent.futures
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from playsound import playsound
 
 WATCHLIST_VIEW = 0
 TICKER_VIEW = 1
 ALARM_VIEW = 2
+TRIGGERED_ALARM_VIEW = 3
+ALERT_SOUND = './ping-82822.mp3'
 
 def save_all(tickers, watchlists, file):
     print("save_all")
@@ -29,17 +31,18 @@ def save_all(tickers, watchlists, file):
 
 
 def toolbar(menu):
-    if menu == 0:
+    if menu == WATCHLIST_VIEW:
         toolbar = [sg.Button("+", key="-ADDWLIST-"),
-                   sg.Button("🗑", key="-DELETEWLIST-")]
-    elif menu == 1:
+                   sg.Button("🗑", key="-DELETEWLIST-"),
+                   sg.Button("🔊", key="-TOGGLESOUND-")]
+    elif menu == TICKER_VIEW:
         toolbar = [sg.Button("←", key="-LEAVETICKERS-"), sg.Button("+", key="-ADDTICKER-"),
                    sg.Button("🗑", key="-DELETETICKER-"), sg.Button("⏰", key="-ENTERALARM-")]
-    elif menu == 2:
+    elif menu == ALARM_VIEW:
         toolbar = [sg.Button("←", key="-LEAVEALARMS-"), sg.Button("+", key="-ADDALARM-"),
                    sg.Button("🗑", key="-DELETEALARM-"), sg.Button("↻", key="-ACTIVATEALARM-")]
-    elif menu == 3:
-        toolbar = [sg.Button("🗑", key="-DELETETRIGGERED-"), sg.Button("↻", key="-ACTIVATETRIGGERED-")]
+    elif menu == TRIGGERED_ALARM_VIEW:
+        toolbar = [sg.Button("🗑", key="-DELETETRIGGERED-"), sg.Button("↻", key="-ACTIVATETRIGGERED-"), sg.Button("✖", key="-EXITTRIGGERED-")]
     return toolbar
 
 def watchlist_prompt(prompt):
@@ -89,25 +92,25 @@ def layout(wlist_names):
     sg.theme('Dark Blue 3')
     layout1 = [
         [sg.Text("Watchlists")],
-        toolbar(0),
+        toolbar(WATCHLIST_VIEW),
         [sg.Listbox(values=wlist_names, enable_events=True, size=(
             40, 20), key="-WLIST-", bind_return_key=True)]
     ]
     layout2 = [
         [sg.Text("Watchlist:"), sg.Text(size=(20, 1), key="-WLISTREF-")],
-        toolbar(1),
+        toolbar(TICKER_VIEW),
         [sg.Table(values=[], headings=["Ticker", "Price", "Change", "%", "Value", "P/L", "P/L %"], num_rows=15, def_col_width=7, auto_size_columns=False, key="-TICKERTABLE-", enable_events=True)]
     ]
 
     layout3 = [
         [sg.Text("Alarms for:"), sg.Text(size=(20, 1), key="-ALARM-")],
-        toolbar(2),
+        toolbar(ALARM_VIEW),
         [sg.Table(values=[], headings=["Stock", "Over", "Under", "Intraday%", "Expiry"], num_rows=15, def_col_width=7, auto_size_columns=False, key="-ALARMTABLE-", enable_events=True)]
     ]
 
     layout4 = [
         [sg.Text("Triggered alarms")],
-        toolbar(3),
+        toolbar(TRIGGERED_ALARM_VIEW),
         [sg.Table(values=[], headings=["Ticker", "Price", "Change", "%", "Value", "P/L", "P/L %"], num_rows=15, def_col_width=7, auto_size_columns=False, key="-TALARMTABLE-", justification='right', enable_events=True)]
     ]
 
@@ -127,7 +130,7 @@ def use_view(window, view, triggered_alarm_visible):
         window[f'-WLISTS-'].update(visible=False)
         window[f'-TICKERS-'].update(visible=False)
         window[f'-ALARMS-'].update(visible=True)
-    if triggered_alarm_visible: # should make sure the triggered alarm list is always on the right when visibles
+    if triggered_alarm_visible: # should make sure the triggered alarm list is always on the right when visible
         window[f'-TALARMS-'].update(visible=triggered_alarm_visible)
 
 def update_all_tickers(tickers, window, signal, triggered_alarms):
@@ -188,7 +191,7 @@ def alarms_to_table(ticker, time):
 			elif minutes > 1:
 				values.append(str(int(minutes))+"m")
 			else:
-				values.append(str(int(minutes)/60)+"s")
+				values.append(str(int(seconds))+"s")
 		else:
 			values.append("N/A")
 		if alarm.active:
@@ -253,7 +256,6 @@ def JSONify(Obj):
     else:
         raise TypeError
 
-
 def load_saved(file):
     print("loading saved data")
     lines = file.readlines()
@@ -273,10 +275,12 @@ def load_saved(file):
                 for a in ticker_dict[ticker]['alarms_active']:
                     if a['expiry']:
                         a['expiry'] = datetime.fromisoformat(a['expiry'])
-                    alarm = Alarm(name=a['name'], over=a['over'], under=a['under'], intraday_percent=a['intraday_percent'], expiry=a['expiry'], active=a['active'])
+                    alarm = Alarm(name=a['name'], over=a['over'], under=a['under'], intraday_percent=a['intraday_percent'], expiry=a['expiry'], active=a['active'], hours_active=a['hours_active'])
                     tickers[ticker].add_alarm(alarm)
                 for a in ticker_dict[ticker]['alarms_inactive']:
-                    alarm = Alarm(name=a['name'], over=a['over'], under=a['under'], intraday_percent=a['intraday_percent'], expiry=a['expiry'], active=a['active'])
+                    if a['hours_active'] > 0:
+                         a['expiry'] = datetime.now() + timedelta(hours=int(a['hours_active']))
+                    alarm = Alarm(name=a['name'], over=a['over'], under=a['under'], intraday_percent=a['intraday_percent'], expiry=a['expiry'], active=a['active'], hours_active=a['hours_active'])
                     tickers[ticker].add_alarm(alarm)
             else:
                 wlist_dict = json.loads(line)
@@ -298,6 +302,7 @@ def main():
     triggered_alarms_showing = False
     popup_active = False
     current_view = WATCHLIST_VIEW
+    sound_active = False
     try:
         with open("saved.txt", 'r+') as f:
             print("found file")
@@ -317,7 +322,8 @@ def main():
     wlist = None
     signal = threading.Event()
     t = threading.Thread(target=update_all_tickers,
-                         args=(tickers, window, signal, triggered_alarms))
+                         args=(tickers, window, signal, triggered_alarms),
+                         daemon=True)
     t.start()
     selected_row = None
     selected_talarm = None
@@ -326,16 +332,27 @@ def main():
     while True:
         event, values = window.read()
 
-        if event == "-UPDATE-" and wlist != None:
-            update_tickers(window, wlist.get_tickers(), tickers, "-TICKERTABLE-")
+        if event == "-UPDATE-":
+            if wlist != None:
+                update_tickers(window, wlist.get_tickers(), tickers, "-TICKERTABLE-")
             if selected_ticker != None and selected_ticker in tickers:
                 update_alarms(window, tickers[selected_ticker], datetime.now())
+            print(len(triggered_alarms))
             if len(triggered_alarms) > 0:
                 if not triggered_alarms_showing:
                     window[f'-TALARMS-'].update(visible=True)
                     triggered_alarms_showing = True
                 update_tickers(window, triggered_alarms, tickers, "-TALARMTABLE-")
-                playsound('./ping-82822.mp3')        
+                if sound_active:
+                    playsound(ALERT_SOUND, block=False)
+
+        if event == "-TOGGLESOUND-":
+            if sound_active:
+                sound_active = False
+                sg.popup("Sound turned OFF")
+            else:
+                sound_active = True
+                sg.popup("Sound turned ON") 
 
         if event == "-WLIST-":
             if values["-WLIST-"][0] == selected_wlist:  # double click
@@ -395,23 +412,23 @@ def main():
                 popup_active = False
 
 
-        if event == "-ADDALARM-":
+        if event == "-ADDALARM-" and len(triggered_alarms) == 0:
             popup_active = True
             event, values = alarm_prompt(
                 "Add alarm for: " + selected_ticker).read(close=True)
-            newAlarm = Alarm(selected_ticker)
+            new_alarm = Alarm(selected_ticker)
             if event == "Ok":
                 if values[0] != "" or values[1] != "" or values[2] != "":
-                    newAlarm = Alarm(selected_ticker)
+                    new_alarm = Alarm(selected_ticker)
                     if (values[0] != ""):
-                        newAlarm.set_over(float(values[0]))
+                        new_alarm.set_over(float(values[0]))
                     if (values[1] != ""):
-                        newAlarm.set_under(float(values[1]))
+                        new_alarm.set_under(float(values[1]))
                     if (values[2] != ""):
-                        newAlarm.set_intraday(float(values[2]))
+                        new_alarm.set_intraday(float(values[2]))
                     if (values[3] != ""):
-                        newAlarm.set_expiry(float(values[3]))
-                    tickers[selected_ticker].add_alarm(newAlarm)
+                        new_alarm.set_expiry(float(values[3]))
+                    tickers[selected_ticker].add_alarm(new_alarm)
                 else:
                     print("invalid input ")
                 update_alarms(window, tickers[selected_ticker], datetime.now())
@@ -488,14 +505,16 @@ def main():
             selected_talarm = None
             window.write_event_value('-SAVEUPDATE-', None)
 
-        if event == "-DELETEALARM-" and selected_row != None:
+        if event == "-DELETEALARM-" and selected_row != None and len(triggered_alarms) == 0:
             tickers[selected_ticker].remove_alarm(selected_row)
             update_alarms(window, tickers[selected_ticker], datetime.now())
             selected_row = None
+            window.write_event_value('-SAVEUPDATE-', None)
 
-        if event == "-ACTIVATEALARM-" and selected_row != None:
+        if event == "-ACTIVATEALARM-" and selected_row != None and len(triggered_alarms) == 0:
             tickers[selected_ticker].activate_alarm(selected_row)
             update_alarms(window, tickers[selected_ticker], datetime.now())
+            window.write_event_value('-SAVEUPDATE-', None)
 
         if event == "-ACTIVATETRIGGERED-" and selected_talarm != None:
             ticker_name = triggered_alarms[selected_talarm]
@@ -510,6 +529,14 @@ def main():
             selected_talarm = None
             window.write_event_value('-SAVEUPDATE-', None)
 
+        if event == "-EXITTRIGGERED-":
+            # triggered_alarms = [] seemed to break something, look into it later
+            for i in range(0, len(triggered_alarms)):
+                triggered_alarms.pop(i)
+            selected_talarm = None
+            triggered_alarms_showing = False
+            window[f'-TALARMS-'].update(visible=False)
+
         if event == "-SAVEUPDATE-":
             save_all(tickers, wlists, "saved.txt")
 
@@ -518,7 +545,7 @@ def main():
             break
         elif popup_active and (event == "Quit" or event == sg.WIN_CLOSED):
              popup_active = False
-    t.join()
+    #t.join()
     window.close()
     print("Successfully closed the window and thread")
     exit()

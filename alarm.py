@@ -51,7 +51,7 @@ class Alarm:
 
     def activate(self):
         if self.hours_active != 0:
-            self.expiry = datetime.datetime.now() + datetime.timedelta(hours=self.hours_active)
+            self.set_expiry(self.hours_active)
         self.active = True
 
     def deactivate(self):

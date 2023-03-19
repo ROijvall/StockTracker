@@ -32,5 +32,8 @@ class Watchlist:
                 d[a] = v
         return d
     
+    def rename(self, new_name):
+        self.name = new_name
+    
     def __str__(self):
        return self.name
